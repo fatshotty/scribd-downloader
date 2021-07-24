@@ -3,6 +3,8 @@ import json
 from bs4 import BeautifulSoup
 from . import const
 from . import exceptions
+from pathlib import Path
+import re, sys
 
 SCRIBD_LOGIN_URL = "https://www.scribd.com/login"
 
@@ -15,7 +17,7 @@ SCRIBD_LOGIN_DATA = {
 }
 
 
-def set_credentials(filepath):
+def old_set_credentials(filepath):
     """
     Reads username and password for Scribd premium account
     from the file passed and overrides the default values
@@ -58,3 +60,25 @@ def set_credentials(filepath):
     const.premium_cookies["_scribd_expire"] = response.cookies["_scribd_expire"]
 
     return response
+
+
+def set_credentials(cookies_file):
+    cookies = parseCookieFile(cookies_file)
+    const.premium_cookies = cookies
+
+
+def parseCookieFile(cookiefile):
+    cookies = {}
+    if Path(cookiefile).exists():
+        # path exists
+        with open(cookiefile, 'r') as fp:
+            for line in fp:
+                if not re.match(r'^\#', line):
+                    if not re.match(r'^\n', line):
+                        lineFields = line.strip().split('\t')
+                        cookies[lineFields[5]] = lineFields[6]
+        print('cookies are {}'.format(cookies) )
+        return cookies
+    else:
+        print(f"Put cookies in {cookiefile}!")
+        sys.exit(1)

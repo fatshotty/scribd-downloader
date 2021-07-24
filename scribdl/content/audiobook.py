@@ -267,7 +267,7 @@ class ScribdAudioBook(ScribdBase):
 
         try:
             start = response.text[response.text.find('{"eor_url":'):]
-            raw_info_str, *_ = start.split("\n")
+            raw_info_str, t = start.split("\n")
             final_curlbrace = -(raw_info_str[::-1].find("}"))
             info_str = raw_info_str[:final_curlbrace]
             info_dict = json.loads(info_str)

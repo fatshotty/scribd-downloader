@@ -3,3 +3,11 @@ build/
 dist/
 scribd+cred.txt
 *.iml
+
+*.md
+*.pdf
+*.pyc
+scribd_downloader.egg-info
+
+cookies.txt
+login.txt

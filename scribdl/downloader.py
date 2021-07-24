@@ -92,11 +92,15 @@ class Downloader:
         Checks whether the passed URL points to a Scribd book
         or a Scribd document.
         """
-        response = requests.get(self.url)
-        soup = BeautifulSoup(response.text, "html.parser")
-        content_class = soup.find("body")["class"]
-        matches_with_book = content_class[0] == "autogen_class_views_layouts_book_web"
-        return matches_with_book
+
+        # just check the url
+        return "/book/" in self.url
+        # response = requests.get(self.url)
+        # print(response.text)
+        # soup = BeautifulSoup(response.text, "html.parser")
+        # content_class = soup.find("body")["class"]
+        # matches_with_book = content_class[0] == "autogen_class_views_layouts_book_web"
+        # return matches_with_book
 
     def is_audiobook(self):
         """

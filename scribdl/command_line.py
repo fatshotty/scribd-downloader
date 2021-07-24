@@ -30,7 +30,7 @@ def get_arguments():
     parser.add_argument(
         "-c",
         "--credentials-file",
-        help="path to file containing your Scribd premium credentials",
+        help="path to file containing your Scribd cookies",
     )
 
     return parser
@@ -47,6 +47,7 @@ def _command_line():
     images = args.images
 
     if args.credentials_file:
+        print('use credentials file')
         credentials_file = args.credentials_file
         authorize.set_credentials(credentials_file)
 
