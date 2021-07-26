@@ -2,12 +2,17 @@ from bs4 import BeautifulSoup
 import requests
 import json
 import re
+import os
 
 from .base import ScribdBase
 from .. import internals
 from .. import const
 from .. import exceptions
 
+
+folder_download = "Downloads"
+folder_type = "Audiobooks"
+folder_name = folder_download + "/" + folder_type
 
 class Track:
     """
@@ -59,8 +64,23 @@ class Playlist:
         """
         Downloads all the chapters available in the playlist.
         """
+        full_folder = folder_name + "/" + self.title
+        try:
+            os.stat(folder_download)
+        except:
+            os.mkdir(folder_download)
+        try:
+            os.stat(folder_name)
+        except:
+            os.mkdir(folder_name)
+        try:
+            os.stat(full_folder)
+        except:
+            os.mkdir(full_folder)
+
         for track in self.tracks:
-            path = "{0}_{1}.mp3".format(self.sanitized_title, track.chapter_number)
+
+            path = "{0}/{1}_{2}.mp3".format(full_folder, self.sanitized_title, track.chapter_number)
             dl_str = 'Downloading chapter-{0} ({1}) to "{2}"'.format(track.chapter_number,
                                                                    track.url,
                                                                    path)
