@@ -11,3 +11,6 @@ scribd_downloader.egg-info
 
 cookies.txt
 login.txt
+
+.vscode/
+.DS_Store

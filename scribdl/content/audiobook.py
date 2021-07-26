@@ -90,8 +90,12 @@ class ScribdAudioBook(ScribdBase):
         self._license_id = None
         self._playlist = None
 
+        self._user_id = None
+
         self.audiobook_url = audiobook_url
         self.scribd_id = scribd_id
+
+        print('found book id: {}'.format(scribd_id))
 
         # Replace these cookie values with ones generated when logged into a
         # Scribd premium-account. This will allow access to full audiobooks.
@@ -105,8 +109,11 @@ class ScribdAudioBook(ScribdBase):
         if not self._audiobook_keys:
             audiobook_keys = self._scrape_audiobook_page()
             try:
+                print('getting AUTH keys...')
                 authenticate_page_keys = self._scrape_authentication_page()
+                print('correctly GOT AUTH keys!!')
             except exceptions.ScribdFetchError:
+                print('*** CANNOT GET AUTH KEY')
                 pass
             else:
                 audiobook_keys.update(authenticate_page_keys)
@@ -158,13 +165,24 @@ class ScribdAudioBook(ScribdBase):
             audiobook = self.audiobook_keys
             self._author_id = audiobook["author_id"]
         return self._author_id
+    
+    @property
+    def user_id(self):
+        """
+        The User-ID of Scribd used to authenticate with
+        https://api.findawayworld.com/.
+        """
+        if not self._user_id:
+            audiobook = self.audiobook_keys
+            self._user_id = audiobook["user_id"]
+        return self._user_id
 
     @property
     def license_url(self):
         """
         Returns the URL used to fetch the License-ID.
         """
-        return "https://api.findawayworld.com/v4/accounts/scribd-{0}/audiobooks/{1}".format(self.author_id, self.book_id)
+        return "https://api.findawayworld.com/v4/accounts/scribd-{0}/audiobooks/{1}".format(self.user_id, self.book_id)
 
     @property
     def license_id(self):
@@ -236,25 +254,43 @@ class ScribdAudioBook(ScribdBase):
         raise NotImplementedError("Use method `ScribdAudioBook.playlist.download` instead.")
 
     def _scrape_audiobook_page(self):
-        """
-        Scrapes the provided audiobook URL for information scraps.
-        """
+        # """
+        # Scrapes the provided audiobook URL for information scraps.
+        # """
+        print('scrape: {}'.format(self.audiobook_url))
         response = requests.get(self.audiobook_url, cookies=self.cookies)
-        # response = requests.get(self.audiobook_url)
         soup = BeautifulSoup(response.text, "html.parser")
 
-        div_tag = soup.find("div", {"data-track_category": "book_preview"})
-        text = json.loads(div_tag["data-push_state"])
-        preview_url = text["audiobook_sample_url"]
+        # div_tag = soup.find("div", {"data-track_category": "book_preview"})
+        # text = json.loads(div_tag["data-push_state"])
+        # preview_url = text["audiobook_sample_url"]
+        # book_id_search = re.search("[0-9]{5,6}", preview_url)
+        # book_id = book_id_search.group()
+
+        # js_tag = soup.find_all("script", {"type": "text/javascript"})[-1]
+        # js_code = js_tag.get_text()
+        # author_id_search = re.search("[0-9]{8,9}", js_code)
+        # author_id = author_id_search.group() if author_id_search else None
+
+        # return {"preview_url": preview_url, "book_id": book_id, "author_id": author_id}
+
+        script_tag = soup.find("script", {"data-hypernova-key": "contentpreview"})
+        content_json = script_tag.string
+        # print('json: {}'.format(content_json))
+        content_json = content_json.replace('<!--', '').replace('-->', '')
+        json_data = json.loads(content_json)
+        author_id = json_data['contentItem']['author']['id']
+
+        preview_url = json_data['contentItem']['audioSampleUrl']
         book_id_search = re.search("[0-9]{5,6}", preview_url)
         book_id = book_id_search.group()
 
-        js_tag = soup.find_all("script", {"type": "text/javascript"})[-1]
-        js_code = js_tag.get_text()
-        author_id_search = re.search("[0-9]{8,9}", js_code)
-        author_id = author_id_search.group() if author_id_search else None
+        user_id = json_data['user']['id']
 
-        return {"preview_url": preview_url, "book_id": book_id, "author_id": author_id}
+        audiobookdata = {"preview_url": preview_url, "book_id": book_id, "author_id": author_id, "user_id": user_id}
+        print('audiobook_keys: {}'.format(audiobookdata))
+
+        return audiobookdata
 
     def _scrape_authentication_page(self):
         """
@@ -263,20 +299,27 @@ class ScribdAudioBook(ScribdBase):
         """
         response = requests.get(self.authenticate_url, cookies=self.cookies)
         soup = BeautifulSoup(response.text, "html.parser")
-        js_tag = soup.find_all("script", {"type": "text/javascript"})[-2]
+        # js_tag = soup.find_all("script", {"type": "text/javascript"})[-2]
 
-        try:
-            start = response.text[response.text.find('{"eor_url":'):]
-            raw_info_str, t = start.split("\n")
-            final_curlbrace = -(raw_info_str[::-1].find("}"))
-            info_str = raw_info_str[:final_curlbrace]
-            info_dict = json.loads(info_str)
-            info_dict["pingback_url"] = "".join(info_dict["pingback_url"])
-        except ValueError:
-            raise exceptions.ScribdFetchError("Unable to fetch information via the authentication page for the"
-                                              "audiobook. This is only available when using a premium Scribd account.")
-        else:
-            return info_dict
+        # try:
+        print('scaping {}'.format(self.authenticate_url) )
+        # print(response.text)
+        find_index = response.text.find('{"eor_url":')
+        start = response.text[find_index:]
+        # print( 'start {}'.format(start) )
+        raw_info_str = start.split("\n")[0]
+        index = raw_info_str.find("}}})")
+        raw_info_str = raw_info_str[ 0 : index + 3 ]
+
+        # print( 'parse:  {}'.format(raw_info_str) )
+
+        info_dict = json.loads(raw_info_str)
+        info_dict["pingback_url"] = "".join(info_dict["pingback_url"])
+        # except ValueError:
+        #     raise exceptions.ScribdFetchError("Unable to fetch information via the authentication page for the"
+        #                                       "audiobook. This is only available when using a premium Scribd account.")
+        # else:
+        return info_dict
 
     def make_playlist(self):
         """
@@ -285,6 +328,7 @@ class ScribdAudioBook(ScribdBase):
         """
         if self.premium_cookies:
             data = '{"license_id":"' + self.license_id + '"}'
+            print( 'license ID: {}'.format(self.license_id) )
             response = requests.post(self.playlist_url, headers=self.headers, data=data)
             playlist = json.loads(response.text)
         else:
